@@ -1,8 +1,7 @@
-import requests, re, json, urllib.parse, html
-# from bs4 import BeautifulSoup
-from base_scraper import BaseScraper
+import re, json, urllib.parse, html, codecs
+from bs4 import BeautifulSoup
+from base_scraper import BaseScraper, ScraperError
 from job import Job
-import codecs
 
 
 class Point72Scraper(BaseScraper):
@@ -13,11 +12,11 @@ class Point72Scraper(BaseScraper):
         )
 
     def scrape_jobs(self):
-        res = requests.get(self.URL)
+        resp = self.fetch_url()
 
-        match = re.search(r"CSSearchModule\.init\('(.+?)',", html.unescape(res.text))
+        match = re.search(r"CSSearchModule\.init\('(.+?)',", html.unescape(resp.text))
         if not match:
-            return {}
+            raise ScraperError(f"Failed to parse response from {self.URL}")
 
         json_str = match.group(1)
         json_str = re.sub(r'(?<!\\)"', r'/"', json_str) # escapes unescaped " inside
@@ -37,12 +36,12 @@ class Point72Scraper(BaseScraper):
                       'location=' + urllib.parse.quote(job_dict['job']['Posted_Location__c'], safe=',') + '&' + \
                       'locale=English&retURL=/CSCareerSearch'
 
-            # soup = BeautifulSoup(job_dict['job']['Job_Description_External__c'], "html.parser")
-            # reqs_section = soup.find('ul')
-            reqs = []
-            # if reqs_section:
-            #     for li in reqs_section.find_all('li'):
-            #         reqs.append(f'- {li.get_text(strip=True)}')
+            soup = BeautifulSoup(job_dict['job']['Job_Description_External__c'], "html.parser")
+            uls = soup.find_all('ul')
+            if len(uls) >= 3: # assumes requirements are in the 3rd unordered list
+                reqs = []
+                for li in uls[2].find_all('li'):
+                    reqs.append(f'- {li.get_text(strip=True)}')
 
             job = Job(self.COMPANY, job_dict['job']['Name'], job_url, '\n'.join(reqs))
             new_jobs[job.hash()] = job

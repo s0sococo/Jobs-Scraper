@@ -1,6 +1,4 @@
-import hashlib
-import json
-
+import json, hashlib
 
 class Job:
     def __init__(self, company_name, job_name, url, reqs_str):

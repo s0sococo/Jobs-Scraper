@@ -1,6 +1,7 @@
-import requests, re, json
+import re, json
 from bs4 import BeautifulSoup
-from base_scraper import BaseScraper
+from urllib.parse import urljoin
+from base_scraper import BaseScraper, ScraperError
 from job import Job
 
 
@@ -15,19 +16,21 @@ class VentionScraper(BaseScraper):
         cur_url = self.URL
         new_jobs = {}
         while cur_url:
-            res = requests.get(cur_url)
-            soup = BeautifulSoup(res.text, 'html.parser')
+            resp = self.fetch_url(cur_url)
+            soup = BeautifulSoup(resp.text, 'html.parser')
 
             next_link = soup.find('a', rel='next')
             if next_link and next_link.has_attr('href'):
-                cur_url = self.URL + next_link.get('href')
+                cur_url = urljoin(self.URL, next_link.get('href'))
             else:
                 cur_url = None
 
             script = soup.find("script", {"id": "__NEXT_DATA__"})
+            if not script:
+                raise ScraperError(f"Script tag missing from {cur_url}.")
             match = re.search(r'"initialVacancies":{.*?"items":(\[.+?])', script.string)
             if not match:
-                break
+                raise ScraperError(f"Failed to parse response from {cur_url}")
 
             json_str = match.group(1)
 
@@ -37,8 +40,8 @@ class VentionScraper(BaseScraper):
                                         , json.loads(json_str)))
 
             for job_dict in jobs_filtered:
-                res = requests.get(job_dict['meta']['html_url'])
-                uls = BeautifulSoup(res.text, 'html.parser').find_all('ul')
+                resp = self.fetch_url(job_dict['meta']['html_url'])
+                uls = BeautifulSoup(resp.text, 'html.parser').find_all('ul')
                 reqs = []
                 if len(uls) >= 2:
                     for li in uls[1].find_all('li'):

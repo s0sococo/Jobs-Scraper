@@ -1,15 +1,9 @@
-import dotenv
-import requests
-import json
-import os
-from base_scraper import BaseScraper
+import os, json, requests, dotenv
+from base_scraper import BaseScraper, ScraperError
 from scrapers import *
 
 
-def send_job(job):
-    bot_token = os.environ.get('BOT_TOKEN')
-    chat_id = os.environ.get('CHAT_ID')
-
+def send_job(job, bot_token, chat_id):
     text = f'{job.company_name}\n' \
            f'<a href="{job.url}">{job.job_name}</a>\n' \
            f'{job.reqs_str}'
@@ -21,7 +15,11 @@ def send_job(job):
         'parse_mode': 'HTML'
     }
 
-    requests.post(url, data=payload)
+    try:
+        resp = requests.post(url, data=payload)
+        resp.raise_for_status()
+    except Exception:
+        raise ScraperError(f"Failed to send Telegram message.") from None
 
 
 def scrape_jobs(scraper: BaseScraper, jobs_hashes_by_company):
@@ -29,14 +27,20 @@ def scrape_jobs(scraper: BaseScraper, jobs_hashes_by_company):
     new_jobs = scraper.scrape_jobs()
     new_hashes = set(new_jobs)
 
+    bot_token = os.environ.get('BOT_TOKEN')
+    chat_id = os.environ.get('CHAT_ID')
+    if not bot_token or not chat_id:
+        raise ScraperError("Incorrect .env file.")
+
     for jh in new_hashes - old_hashes:
-        send_job(new_jobs[jh])
+        send_job(new_jobs[jh], bot_token, chat_id)
 
     jobs_hashes_by_company[scraper.COMPANY] = list(new_jobs.keys())
 
 
 if __name__ == "__main__":
-    dotenv.load_dotenv()
+    if not dotenv.load_dotenv():
+        raise ScraperError("Couldn't find .env file.")
 
     try:
         with open('jobs_hashes_by_company.json', 'r', encoding='utf-8') as f:
@@ -47,7 +51,7 @@ if __name__ == "__main__":
     scrapers = [
         VentionScraper(),
         Point72Scraper(),
-        SamsungRDScraper()
+        # SamsungRDScraper()
     ]
 
     for scr in scrapers:
