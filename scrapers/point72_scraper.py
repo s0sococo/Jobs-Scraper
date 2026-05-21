@@ -1,7 +1,8 @@
 import requests, re, json, urllib.parse, html
-from bs4 import BeautifulSoup
+# from bs4 import BeautifulSoup
 from base_scraper import BaseScraper
-from models import Job
+from job import Job
+import codecs
 
 
 class Point72Scraper(BaseScraper):
@@ -18,11 +19,10 @@ class Point72Scraper(BaseScraper):
         if not match:
             return {}
 
-        json_str = (
-            match.group(1)
-            .encode('utf-8').decode('unicode_escape')
-            .encode('latin1').decode('utf-8')
-        )
+        json_str = match.group(1)
+        json_str = re.sub(r'(?<!\\)"', r'/"', json_str) # escapes unescaped " inside
+        json_str = codecs.escape_decode(bytes(json_str, "utf-8"))[0].decode("utf-8")
+        json_str = re.sub(r'/"', r'\"', json_str)
 
         jobs_filtered = list(filter(lambda x: x['job']['Experience__c'] == 'Internships'
                                     and 'Technology & Engineering' in x['job']['Area__c']
@@ -37,12 +37,12 @@ class Point72Scraper(BaseScraper):
                       'location=' + urllib.parse.quote(job_dict['job']['Posted_Location__c'], safe=',') + '&' + \
                       'locale=English&retURL=/CSCareerSearch'
 
-            soup = BeautifulSoup(job_dict['job']['Job_Description_External__c'], "html.parser")
-            reqs_section = soup.find('ul')
+            # soup = BeautifulSoup(job_dict['job']['Job_Description_External__c'], "html.parser")
+            # reqs_section = soup.find('ul')
             reqs = []
-            if reqs_section:
-                for li in reqs_section.find_all('li'):
-                    reqs.append(f'- {li.get_text(strip=True)}')
+            # if reqs_section:
+            #     for li in reqs_section.find_all('li'):
+            #         reqs.append(f'- {li.get_text(strip=True)}')
 
             job = Job(self.COMPANY, job_dict['job']['Name'], job_url, '\n'.join(reqs))
             new_jobs[job.hash()] = job

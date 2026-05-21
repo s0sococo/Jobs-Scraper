@@ -1,7 +1,7 @@
 import requests, json
 from bs4 import BeautifulSoup
 from base_scraper import BaseScraper
-from models import Job
+from job import Job
 
 
 class SamsungRDScraper(BaseScraper):

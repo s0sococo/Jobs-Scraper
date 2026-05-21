@@ -1,12 +1,14 @@
+import dotenv
 import requests
 import json
+import os
 from base_scraper import BaseScraper
 from scrapers import *
 
 
 def send_job(job):
-    bot_token = ''
-    chat_id = ''
+    bot_token = os.environ.get('BOT_TOKEN')
+    chat_id = os.environ.get('CHAT_ID')
 
     text = f'{job.company_name}\n' \
            f'<a href="{job.url}">{job.job_name}</a>\n' \
@@ -19,8 +21,7 @@ def send_job(job):
         'parse_mode': 'HTML'
     }
 
-    response = requests.post(url, data=payload)
-    print(response.json())
+    requests.post(url, data=payload)
 
 
 def scrape_jobs(scraper: BaseScraper, jobs_hashes_by_company):
@@ -35,9 +36,8 @@ def scrape_jobs(scraper: BaseScraper, jobs_hashes_by_company):
 
 
 if __name__ == "__main__":
-    # scr = SamsungRDScraper()
-    #
-    # jobs = scr.scrape_jobs()
+    dotenv.load_dotenv()
+
     try:
         with open('jobs_hashes_by_company.json', 'r', encoding='utf-8') as f:
             jobs_hashes_by_company = json.load(f)
@@ -55,8 +55,3 @@ if __name__ == "__main__":
 
     with open('jobs_hashes_by_company.json', 'w', encoding='utf-8') as f:
         json.dump(jobs_hashes_by_company, f)
-
-
-
-
-

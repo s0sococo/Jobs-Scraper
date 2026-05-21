@@ -1,2 +1,5 @@
 .idea/
-*.txt
+.env
+venv/
+__pycache__/
+jobs_hashes_by_company.json

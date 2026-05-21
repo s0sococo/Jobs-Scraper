@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from models import Job
+from job import Job
 
 
 @dataclass
